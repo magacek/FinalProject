@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import com.google.android.gms.maps.model.LatLngBounds
 
 import java.util.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
@@ -419,13 +421,21 @@ fun CalendarScreen(navController: NavController) {
 
     Column {
         Text("${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}", style = MaterialTheme.typography.h6)
-        DaysOfWeekHeaders()
-        CalendarDaysGrid(currentMonth, daysInMonth, firstDayOfWeek, selectedDate) { date ->
-            selectedDate = date
-            fetchDailySpending(date) { spending ->
-                spendingForSelectedDate = spending
+        DaysOfWeekHeaders(cellSize = 54.dp)
+        CalendarDaysGrid(
+            currentMonth = currentMonth,
+            daysInMonth = daysInMonth,
+            firstDayOfWeek = firstDayOfWeek,
+            selectedDate = selectedDate,
+            cellSize = 48.dp, // Updated size
+            onDateSelected = { date ->
+                selectedDate = date
+                fetchDailySpending(date) { spending ->
+                    spendingForSelectedDate = spending
+                }
             }
-        }
+        )
+
 
         selectedDate?.let { date ->
             Text("Selected date: ${date.toString()}", style = MaterialTheme.typography.body1)
@@ -437,10 +447,16 @@ fun CalendarScreen(navController: NavController) {
 }
 
 @Composable
-fun DaysOfWeekHeaders() {
+fun DaysOfWeekHeaders(cellSize: Dp) {
     Row(modifier = Modifier.fillMaxWidth()) {
         DayOfWeek.values().forEach { day ->
-            Text(day.getDisplayName(TextStyle.SHORT, Locale.getDefault()), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+            Text(
+                text = day.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                modifier = Modifier
+                    .width(cellSize) // Set each header's width equal to cell size
+                    .padding(vertical = 5.dp),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -451,19 +467,26 @@ fun CalendarDaysGrid(
     daysInMonth: Int,
     firstDayOfWeek: Int,
     selectedDate: LocalDate?,
+    cellSize: Dp,
     onDateSelected: (LocalDate) -> Unit
 ) {
-    val weeksInMonth = (firstDayOfWeek - 1 + daysInMonth + 6) / 7
-    for (week in 0 until weeksInMonth) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            for (dayOfWeek in 1..7) {
-                val dayOfMonth = week * 7 + dayOfWeek - firstDayOfWeek + 1
-                if (dayOfMonth > 0 && dayOfMonth <= daysInMonth) {
-                    DayCell(currentMonth.atDay(dayOfMonth), selectedDate == currentMonth.atDay(dayOfMonth)) {
-                        onDateSelected(currentMonth.atDay(dayOfMonth))
+    val weeksInMonth = (daysInMonth + firstDayOfWeek - 2) / 7 + 1
+
+    Column {
+        for (week in 0 until weeksInMonth) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                for (dayOfWeek in 1..7) {
+                    val dayOfMonth = week * 7 + dayOfWeek - firstDayOfWeek + 2
+                    if (dayOfMonth in 1..daysInMonth) {
+                        DayCell(
+                            date = currentMonth.atDay(dayOfMonth),
+                            isSelected = selectedDate == currentMonth.atDay(dayOfMonth),
+                            cellSize = cellSize,
+                            onDayClicked = { onDateSelected(currentMonth.atDay(dayOfMonth)) }
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.size(cellSize)) // Spacer for alignment
                     }
-                } else {
-                    Spacer(modifier = Modifier.size(40.dp))
                 }
             }
         }
@@ -471,17 +494,20 @@ fun CalendarDaysGrid(
 }
 
 @Composable
-fun DayCell(date: LocalDate, isSelected: Boolean, onDayClicked: () -> Unit) {
+fun DayCell(date: LocalDate, isSelected: Boolean, cellSize: Dp, onDayClicked: () -> Unit) {
     Button(
         onClick = onDayClicked,
         modifier = Modifier
             .padding(4.dp)
-            .size(40.dp),
-        colors = ButtonDefaults.buttonColors(backgroundColor = if (isSelected) MaterialTheme.colors.primary else MaterialTheme.colors.surface)
+            .size(cellSize), // Use the new cell size
+        colors = ButtonDefaults.buttonColors(
+            backgroundColor = if (isSelected) MaterialTheme.colors.primary else MaterialTheme.colors.surface
+        )
     ) {
-        Text("${date.dayOfMonth}", textAlign = TextAlign.Center)
+        Text(text = "${date.dayOfMonth}", textAlign = TextAlign.Center)
     }
 }
+
 
 fun fetchDailySpending(date: LocalDate, onResult: (Double) -> Unit) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
