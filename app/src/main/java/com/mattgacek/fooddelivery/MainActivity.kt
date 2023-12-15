@@ -1,19 +1,15 @@
 package com.mattgacek.fooddelivery
 
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
@@ -78,7 +74,7 @@ fun AppNavigation() {
         },
         drawerContent = {
             if (authState.value != null) {
-                DrawerContent(authState.value, navController)
+                DrawerContent(authState.value, navController, scaffoldState.drawerState)
             }
         }
     ) {
@@ -94,7 +90,8 @@ fun AppNavigation() {
 
 
 @Composable
-fun DrawerContent(user: FirebaseUser?, navController: NavController) {
+fun DrawerContent(user: FirebaseUser?, navController: NavController, drawerState: DrawerState) {
+    val coroutineScope = rememberCoroutineScope()
     Column(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.padding(16.dp)) {
             Column {
@@ -119,6 +116,12 @@ fun DrawerContent(user: FirebaseUser?, navController: NavController) {
         Spacer(modifier = Modifier.weight(1f))
         Button(onClick = {
             FirebaseAuth.getInstance().signOut()
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+            coroutineScope.launch {
+                drawerState.close() // Close the drawer
+            }
         }) {
             Text("Sign Out")
         }

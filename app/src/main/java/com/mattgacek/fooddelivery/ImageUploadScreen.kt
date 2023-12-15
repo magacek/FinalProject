@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.storage.FirebaseStorage
 import java.util.*
 
@@ -60,12 +61,24 @@ fun ImageUploadScreen(navController: NavController) {
             imageUri?.let { uri ->
                 val storageRef = FirebaseStorage.getInstance().reference
                 val userId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-                val imageRef = storageRef.child("images/${userId}/${UUID.randomUUID()}")
-                val uploadTask = imageRef.putFile(uri)
+                val imageRef = storageRef.child("images/$userId/profile_picture")
 
+                val uploadTask = imageRef.putFile(uri)
                 uploadTask.addOnSuccessListener {
-                    Toast.makeText(context, "Image Uploaded Successfully", Toast.LENGTH_SHORT).show()
-                    navController.navigate("home")
+                    imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                        val userProfileChangeRequest = UserProfileChangeRequest.Builder()
+                            .setPhotoUri(downloadUri)
+                            .build()
+
+                        FirebaseAuth.getInstance().currentUser?.updateProfile(userProfileChangeRequest)?.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                Toast.makeText(context, "Profile Updated Successfully", Toast.LENGTH_SHORT).show()
+                                navController.navigate("home") // Navigate to Home Screen
+                            } else {
+                                Toast.makeText(context, "Profile Update Failed: ${task.exception?.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
                 }.addOnFailureListener {
                     Toast.makeText(context, "Upload Failed: ${it.message}", Toast.LENGTH_LONG).show()
                 }
