@@ -7,10 +7,12 @@ import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import com.google.android.gms.maps.model.LatLngBounds
 
+import java.util.*
 
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -20,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
@@ -35,6 +38,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObjects
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.ZoneId
+import java.time.format.TextStyle
+import java.util.Locale
 import java.util.Random
 
 data class Restaurant(
@@ -399,9 +408,101 @@ fun formatTimestamp(timestamp: Long): String {
 }
 
 
+@Composable
+fun CalendarScreen(navController: NavController) {
+    val currentMonth = YearMonth.now()
+    val daysInMonth = currentMonth.lengthOfMonth()
+    val firstDayOfMonth = currentMonth.atDay(1)
+    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var spendingForSelectedDate by remember { mutableStateOf<Double?>(null) }
 
+    Column {
+        Text("${currentMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${currentMonth.year}", style = MaterialTheme.typography.h6)
+        DaysOfWeekHeaders()
+        CalendarDaysGrid(currentMonth, daysInMonth, firstDayOfWeek, selectedDate) { date ->
+            selectedDate = date
+            fetchDailySpending(date) { spending ->
+                spendingForSelectedDate = spending
+            }
+        }
 
+        selectedDate?.let { date ->
+            Text("Selected date: ${date.toString()}", style = MaterialTheme.typography.body1)
+            spendingForSelectedDate?.let { spending ->
+                Text("Spending: $${spending}", style = MaterialTheme.typography.body1)
+            }
+        }
+    }
+}
 
+@Composable
+fun DaysOfWeekHeaders() {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        DayOfWeek.values().forEach { day ->
+            Text(day.getDisplayName(TextStyle.SHORT, Locale.getDefault()), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        }
+    }
+}
 
+@Composable
+fun CalendarDaysGrid(
+    currentMonth: YearMonth,
+    daysInMonth: Int,
+    firstDayOfWeek: Int,
+    selectedDate: LocalDate?,
+    onDateSelected: (LocalDate) -> Unit
+) {
+    val weeksInMonth = (firstDayOfWeek - 1 + daysInMonth + 6) / 7
+    for (week in 0 until weeksInMonth) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            for (dayOfWeek in 1..7) {
+                val dayOfMonth = week * 7 + dayOfWeek - firstDayOfWeek + 1
+                if (dayOfMonth > 0 && dayOfMonth <= daysInMonth) {
+                    DayCell(currentMonth.atDay(dayOfMonth), selectedDate == currentMonth.atDay(dayOfMonth)) {
+                        onDateSelected(currentMonth.atDay(dayOfMonth))
+                    }
+                } else {
+                    Spacer(modifier = Modifier.size(40.dp))
+                }
+            }
+        }
+    }
+}
 
+@Composable
+fun DayCell(date: LocalDate, isSelected: Boolean, onDayClicked: () -> Unit) {
+    Button(
+        onClick = onDayClicked,
+        modifier = Modifier
+            .padding(4.dp)
+            .size(40.dp),
+        colors = ButtonDefaults.buttonColors(backgroundColor = if (isSelected) MaterialTheme.colors.primary else MaterialTheme.colors.surface)
+    ) {
+        Text("${date.dayOfMonth}", textAlign = TextAlign.Center)
+    }
+}
 
+fun fetchDailySpending(date: LocalDate, onResult: (Double) -> Unit) {
+    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+    val startOfDay = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val endOfDay = date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    FirebaseFirestore.getInstance().collection("orders")
+        .whereEqualTo("userId", userId)
+        .whereGreaterThanOrEqualTo("orderTime", startOfDay)
+        .whereLessThan("orderTime", endOfDay)
+        .get()
+        .addOnSuccessListener { querySnapshot ->
+            val totalSpending = querySnapshot.documents.sumOf { document ->
+                val items = document.get("items") as? List<Map<String, Any>> ?: listOf()
+                items.sumOf { item ->
+                    val priceString = item["price"] as? String ?: return@sumOf 0.0
+                    val quantity = (item["quantity"] as? Number)?.toInt() ?: 1
+                    val price = priceString.drop(1).toDoubleOrNull() ?: 0.0
+                    price * quantity
+                }
+            }
+            onResult(totalSpending)
+        }
+}

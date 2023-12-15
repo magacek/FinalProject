@@ -104,6 +104,10 @@ fun AppNavigation() {
                 val orderId = backStackEntry.arguments?.getString("orderId")
                 OrderDetailsScreen(navController, orderId)
             }
+            composable("calendar") {
+                CalendarScreen(navController)
+            }
+
 
 
         }
@@ -138,6 +142,10 @@ fun DrawerContent(user: FirebaseUser?, navController: NavController, drawerState
         Button(onClick = { navController.navigate("recentOrders") }) {
             Text("Recent Orders")
         }
+        Button(onClick = { navController.navigate("calendar") }) {
+            Text("Calendar")
+        }
+
         // Your other drawer items...
         Spacer(modifier = Modifier.weight(1f))
         Button(onClick = {
