@@ -89,7 +89,10 @@ fun AppNavigation() {
                 val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: ""
                 RestaurantDetailScreen(restaurantName, navController)
             }
-
+            composable("orderDetails/{orderId}") { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+                OrderDetailsScreen(orderId, navController)
+            }
 
 
         }

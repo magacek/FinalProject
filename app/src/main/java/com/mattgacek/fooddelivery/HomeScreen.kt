@@ -135,9 +135,33 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
                     modifier = Modifier.fillMaxWidth().padding(8.dp)
                 )
 
-                Button(onClick = { /* Implement order processing logic */ }, modifier = Modifier.padding(16.dp)) {
+// Inside RestaurantDetailScreen, within the "Place Order" button onClick
+                Button(onClick = {
+                    val orderDetails = hashMapOf(
+                        "restaurantName" to restaurantName,
+                        "items" to restaurant?.menu?.map { menuItem ->
+                            hashMapOf(
+                                "name" to (menuItem["name"] as String),
+                                "price" to (menuItem["price"] as String),
+                                "quantity" to (menuItemQuantities[menuItem["name"] as String] ?: 0)
+                            )
+                        },
+                        "deliveryAddress" to deliveryAddress,
+                        "orderTime" to System.currentTimeMillis() // Unix timestamp
+                    )
+
+                    FirebaseFirestore.getInstance().collection("placed")
+                        .add(orderDetails)
+                        .addOnSuccessListener {
+                            navController.navigate("orderDetails/${it.id}") // Navigate with the document ID
+                        }
+                        .addOnFailureListener {
+                            // Handle failure (e.g., show a message to the user)
+                        }
+                }, modifier = Modifier.padding(16.dp)) {
                     Text("Place Order")
                 }
+
                 Button(onClick = { isInCheckoutMode = false }, modifier = Modifier.padding(16.dp)) {
                     Text("Modify Order")
                 }
@@ -182,8 +206,59 @@ fun CheckoutMenuItemCard(menuItem: Map<String, Any>, quantity: Int) {
         }
     }
 }
+@Composable
+fun OrderDetailsScreen(orderId: String, navController: NavController) {
+    var order by remember { mutableStateOf<Map<String, Any>?>(null) }
 
+    LaunchedEffect(orderId) {
+        FirebaseFirestore.getInstance().collection("placed")
+            .document(orderId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document.exists()) {
+                    order = document.data
+                }
+            }
+            .addOnFailureListener {
+                // Handle failure
+            }
+    }
 
+    order?.let {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            Text("Order Details", style = MaterialTheme.typography.h4)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Display order details
+            (it["items"] as? List<Map<String, Any>>)?.forEach { item ->
+                OrderItemCard(item)
+            }
+
+            // Additional details like address, order time, etc.
+            Text("From: ${it["restaurantName"]}")
+            Text("Address: ${it["deliveryAddress"]}")
+            // Convert the timestamp to readable date/time
+            Text("Date/Time: ${formatTimestamp(it["orderTime"] as Long)}")
+        }
+    } ?: Text("Loading order details...", modifier = Modifier.fillMaxWidth().padding(16.dp))
+}
+
+@Composable
+fun OrderItemCard(item: Map<String, Any>) {
+    Card(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Text("Item: ${item["name"]}", style = MaterialTheme.typography.body1)
+            Text("Price: ${item["price"]}", style = MaterialTheme.typography.body1)
+            Text("Quantity: ${item["quantity"]}", style = MaterialTheme.typography.body1)
+        }
+    }
+}
+
+fun formatTimestamp(timestamp: Long): String {
+    val sdf = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", java.util.Locale.getDefault())
+    val date = java.util.Date(timestamp)
+    return sdf.format(date)
+}
 
 
 
