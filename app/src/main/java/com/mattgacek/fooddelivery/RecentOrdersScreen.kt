@@ -30,16 +30,17 @@ fun RecentOrdersScreen(navController: NavController) {
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         orders.forEach { order ->
-            OrderCard(order = order)
+            OrderCard(order = order, navController, userId)
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun OrderCard(order: Map<String, Any>) {
+fun OrderCard(order: Map<String, Any>, navController: NavController, userId: String?) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Existing code for displaying order details
             Text("Order from: ${order["restaurantName"]}", style = MaterialTheme.typography.h6)
 
             // Displaying the items ordered
@@ -59,8 +60,32 @@ fun OrderCard(order: Map<String, Any>) {
             order["specialInstructions"]?.let {
                 Text("Special instructions: $it", style = MaterialTheme.typography.body2)
             }
+            Button(onClick = { placeOrderAgain(order, userId, navController) }) {
+                Text("Place this order again")
+            }
         }
     }
 }
+
+fun placeOrderAgain(order: Map<String, Any>, userId: String?, navController: NavController) {
+    // Extract restaurant address from the original order
+    val restaurantAddress = order["restaurantAddress"] as? String ?: return
+
+    val newOrder = order.toMutableMap().apply {
+        // Update the order time
+        put("orderTime", System.currentTimeMillis())
+    }
+
+    FirebaseFirestore.getInstance().collection("orders")
+        .add(newOrder)
+        .addOnSuccessListener {
+            // Navigate to OrderTrackingScreen with the correct addresses
+            navController.navigate("orderTracking/$restaurantAddress/${newOrder["deliveryAddress"]}")
+        }
+        .addOnFailureListener {
+            // Handle failure (e.g., show an error message)
+        }
+}
+
 
 

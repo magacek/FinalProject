@@ -159,11 +159,13 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
 // Inside RestaurantDetailScreen, within the "Place Order" button onClick
                 Button(onClick = {
                     val orderDetails = hashMapOf(
+                        "restaurantAddress" to restaurant?.address,
                         "restaurantName" to restaurantName,
                         "items" to restaurant?.menu?.map { menuItem ->
                             hashMapOf(
                                 "name" to menuItem["name"] as String,
                                 "price" to menuItem["price"] as String,
+
                                 "quantity" to (menuItemQuantities[menuItem["name"] as String] ?: 0)
                             )
                         },
