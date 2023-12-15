@@ -81,6 +81,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:1.4.0")
     implementation("com.google.maps.android:android-maps-utils:3.8.0")
     implementation("com.google.maps.android:maps-utils-ktx:5.0.0")
-
+    implementation("org.osmdroid:osmdroid-android:6.1.17")
     implementation("com.google.accompanist:accompanist-pager:0.24.1-alpha")
+    implementation("com.google.android.gms:play-services-maps:17.0.1")
+    implementation("com.google.maps.android:maps-utils-ktx:3.1.0")
+
 }

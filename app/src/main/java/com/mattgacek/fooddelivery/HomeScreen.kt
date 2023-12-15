@@ -1,9 +1,15 @@
 package com.mattgacek.fooddelivery
 
+import android.content.Context
+import android.graphics.Color
+import android.location.Geocoder
+import android.location.Location
+import android.os.Bundle
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import com.google.android.gms.maps.model.LatLngBounds
 
 
 import androidx.compose.material.*
@@ -13,19 +19,31 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.MapView
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PolylineOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObjects
+import java.util.Random
 
 data class Restaurant(
     val name: String = "",
-    val imageUrls: List<String> = emptyList(), // Make sure this matches the Firestore field name
-    val menu: List<Map<String, Any>> = emptyList() // Make sure this matches the Firestore field name
+    val imageUrls: List<String> = emptyList(),
+    val menu: List<Map<String, Any>> = emptyList(),
+    val address: String = "" // Add this line
 )
+
 
 
 @Composable
@@ -90,10 +108,11 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
             .addOnSuccessListener { snapshot ->
                 restaurant = snapshot.toObjects<Restaurant>().firstOrNull()
                 restaurant?.menu?.forEach { menuItem ->
-                    menuItemQuantities[menuItem["name"] as String] = 1 // Initialize with default quantity
+                    menuItemQuantities[menuItem["name"] as String] = 1
                 }
             }
     }
+
 
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize()) {
         restaurant?.let { res ->
@@ -143,20 +162,20 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
                         "restaurantName" to restaurantName,
                         "items" to restaurant?.menu?.map { menuItem ->
                             hashMapOf(
-                                "name" to (menuItem["name"] as String),
-                                "price" to (menuItem["price"] as String),
+                                "name" to menuItem["name"] as String,
+                                "price" to menuItem["price"] as String,
                                 "quantity" to (menuItemQuantities[menuItem["name"] as String] ?: 0)
                             )
                         },
                         "deliveryAddress" to deliveryAddress,
-                        "orderTime" to System.currentTimeMillis(), // Save the current timestamp
-                        "userId" to FirebaseAuth.getInstance().currentUser?.uid // Optionally, save the user ID
+                        "orderTime" to System.currentTimeMillis(),
+                        "userId" to FirebaseAuth.getInstance().currentUser?.uid
                     )
 
-                    FirebaseFirestore.getInstance().collection("placed")
+                    FirebaseFirestore.getInstance().collection("orders")
                         .add(orderDetails)
                         .addOnSuccessListener {
-                            navController.navigate("orderDetails")
+                            navController.navigate("orderTracking/${restaurant?.address}/$deliveryAddress")
                         }
                         .addOnFailureListener {
                             // Handle failure
@@ -173,6 +192,101 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
         }
     } ?: Text("Loading or no data available", modifier = Modifier.fillMaxWidth().padding(16.dp))
 }
+
+
+@Composable
+fun OrderTrackingScreen(navController: NavController, deliveryAddress: String, restaurantAddress: String) {
+    val context = LocalContext.current
+    val mapView = rememberMapViewWithLifecycle()
+    var googleMap by remember { mutableStateOf<GoogleMap?>(null) }
+    val restaurantLatLng = getAddressLatLng(context, restaurantAddress)
+    val deliveryLatLng = getAddressLatLng(context, deliveryAddress)
+
+
+    LaunchedEffect(mapView) {
+        mapView.getMapAsync { map ->
+            googleMap = map
+            val boundsBuilder = LatLngBounds.builder()
+
+            // Add markers and draw a line between them
+            restaurantLatLng?.let {
+                map.addMarker(MarkerOptions().position(it).title("Restaurant"))
+                    ?.also { marker -> boundsBuilder.include(marker.position) }
+            }
+
+            deliveryLatLng?.let {
+                map.addMarker(MarkerOptions().position(it).title("Delivery Address"))
+                    ?.also { marker -> boundsBuilder.include(marker.position) }
+            }
+
+            if (restaurantLatLng != null && deliveryLatLng != null) {
+                map.addPolyline(PolylineOptions().add(restaurantLatLng, deliveryLatLng).width(5f).color(Color.RED))
+            }
+
+            val bounds = boundsBuilder.build()
+            map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100))
+        }
+    }
+
+    val estimatedTime = if (restaurantLatLng != null && deliveryLatLng != null) {
+        calculateEstimatedDeliveryTime(restaurantLatLng, deliveryLatLng)
+    } else 0
+
+    // Adjust the layout to show the map and the estimated time
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text("Estimated Delivery Time: $estimatedTime minutes", modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally))
+        AndroidView({ mapView }, modifier = Modifier.weight(1f).fillMaxWidth())
+    }
+}
+
+
+
+
+@Composable
+fun rememberMapViewWithLifecycle(): MapView {
+    val context = LocalContext.current
+    val mapView = remember {
+        MapView(context).apply { onCreate(Bundle()) }
+    }
+    DisposableEffect(mapView) {
+        mapView.onStart()
+        mapView.onResume()
+        onDispose {
+            mapView.onStop()
+            mapView.onPause()
+        }
+    }
+    return mapView
+}
+
+fun getAddressLatLng(context: Context, address: String): LatLng? {
+    val geocoder = Geocoder(context)
+    return geocoder.getFromLocationName(address, 1)?.firstOrNull()?.let {
+        LatLng(it.latitude, it.longitude)
+    }
+}
+fun calculateEstimatedDeliveryTime(startLatLng: LatLng, endLatLng: LatLng): Int {
+    val distanceInMeters = FloatArray(1)
+    Location.distanceBetween(startLatLng.latitude, startLatLng.longitude, endLatLng.latitude, endLatLng.longitude, distanceInMeters)
+    val distanceInKm = distanceInMeters[0] / 1000 // Convert meters to kilometers
+
+    val averageSpeedInKmH = 40 // Average speed in km/h
+    val estimatedTimeInHours = distanceInKm / averageSpeedInKmH
+
+    return (estimatedTimeInHours * 60).toInt() // Convert hours to minutes and return
+}
+
+
+fun calculateDistance(startLatLng: LatLng, endLatLng: LatLng): Float {
+    val results = FloatArray(1)
+    Location.distanceBetween(
+        startLatLng.latitude, startLatLng.longitude,
+        endLatLng.latitude, endLatLng.longitude,
+        results
+    )
+    return results[0] / 1000 // Convert to kilometers
+}
+
 
 @Composable
 fun MenuItemCard(menuItem: Map<String, Any>, quantity: Int, onQuantityChange: (Int) -> Unit) {
@@ -248,6 +362,11 @@ fun OrderDetailsScreen(navController: NavController) {
             Text("Address: ${it["deliveryAddress"]}")
             // Convert the timestamp to readable date/time
             Text("Date/Time: ${formatTimestamp(it["orderTime"] as Long)}")
+        }
+        Button(onClick = {
+            navController.navigate("orderTracking/${order!!["restaurantAddress"]}/${order!!["deliveryAddress"]}")
+        }) {
+            Text("Track Order")
         }
     } ?: Text("Loading order details...", modifier = Modifier.fillMaxWidth().padding(16.dp))
 }

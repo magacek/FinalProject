@@ -1,4 +1,3 @@
-// File: RecentOrdersScreen.kt
 package com.mattgacek.fooddelivery
 
 import androidx.compose.foundation.layout.*
@@ -17,7 +16,7 @@ fun RecentOrdersScreen(navController: NavController) {
     var orders by remember { mutableStateOf<List<Map<String, Any>>>(listOf()) }
 
     LaunchedEffect(userId) {
-        FirebaseFirestore.getInstance().collection("placed")
+        FirebaseFirestore.getInstance().collection("orders") // Changed from "placed" to "orders"
             .whereEqualTo("userId", userId)
             .orderBy("orderTime", Query.Direction.DESCENDING)
             .get()
