@@ -16,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObjects
 
 data class Restaurant(
@@ -147,20 +149,22 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
                             )
                         },
                         "deliveryAddress" to deliveryAddress,
-                        "orderTime" to System.currentTimeMillis() // Unix timestamp
+                        "orderTime" to System.currentTimeMillis(), // Save the current timestamp
+                        "userId" to FirebaseAuth.getInstance().currentUser?.uid // Optionally, save the user ID
                     )
 
                     FirebaseFirestore.getInstance().collection("placed")
                         .add(orderDetails)
                         .addOnSuccessListener {
-                            navController.navigate("orderDetails/${it.id}") // Navigate with the document ID
+                            navController.navigate("orderDetails")
                         }
                         .addOnFailureListener {
-                            // Handle failure (e.g., show a message to the user)
+                            // Handle failure
                         }
                 }, modifier = Modifier.padding(16.dp)) {
                     Text("Place Order")
                 }
+
 
                 Button(onClick = { isInCheckoutMode = false }, modifier = Modifier.padding(16.dp)) {
                     Text("Modify Order")
@@ -206,17 +210,22 @@ fun CheckoutMenuItemCard(menuItem: Map<String, Any>, quantity: Int) {
         }
     }
 }
+
 @Composable
-fun OrderDetailsScreen(orderId: String, navController: NavController) {
+fun OrderDetailsScreen(navController: NavController) {
     var order by remember { mutableStateOf<Map<String, Any>?>(null) }
 
-    LaunchedEffect(orderId) {
+    LaunchedEffect(Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid // Fetch the current user's ID
         FirebaseFirestore.getInstance().collection("placed")
-            .document(orderId)
+            .whereEqualTo("userId", userId) // Filter by user ID
+            .orderBy("orderTime", Query.Direction.DESCENDING) // Order by timestamp
+            .limit(1) // Limit to the most recent order
             .get()
-            .addOnSuccessListener { document ->
-                if (document.exists()) {
-                    order = document.data
+            .addOnSuccessListener { querySnapshot ->
+                val documents = querySnapshot.documents
+                if (documents.isNotEmpty()) {
+                    order = documents.first().data
                 }
             }
             .addOnFailureListener {
@@ -259,6 +268,7 @@ fun formatTimestamp(timestamp: Long): String {
     val date = java.util.Date(timestamp)
     return sdf.format(date)
 }
+
 
 
 
