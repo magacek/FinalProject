@@ -55,7 +55,7 @@ fun AppNavigation() {
         topBar = {
             if (shouldShowTopBar) {
                 TopAppBar(
-                    title = { Text("Food Delivery App") },
+                    title = { Text("") },
                     navigationIcon = {
                         IconButton(onClick = {
                             coroutineScope.launch { // Use coroutineScope to call suspend function
@@ -92,6 +92,9 @@ fun AppNavigation() {
             composable("orderDetails") {
                 OrderDetailsScreen(navController)
             }
+            composable("recentOrders") {
+                RecentOrdersScreen(navController)
+            }
 
 
         }
@@ -122,6 +125,9 @@ fun DrawerContent(user: FirebaseUser?, navController: NavController, drawerState
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = { navController.navigate("home") }) {
             Text("Home")
+        }
+        Button(onClick = { navController.navigate("recentOrders") }) {
+            Text("Recent Orders")
         }
         // Your other drawer items...
         Spacer(modifier = Modifier.weight(1f))
