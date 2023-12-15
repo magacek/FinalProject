@@ -85,6 +85,10 @@ fun AppNavigation() {
             composable("home") {
                 HomeScreen(navController) // Pass NavController here
             }
+            composable("restaurantDetail/{restaurantName}") { backStackEntry ->
+                val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: ""
+                RestaurantDetailScreen(restaurantName, navController)
+            }
         }
     }
 }
