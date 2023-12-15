@@ -55,6 +55,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("androidx.compose.ui:ui:1.1.0")
     implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-firestore")
     implementation("androidx.compose.material:material:1.1.0")
     implementation("androidx.compose.ui:ui-tooling-preview:1.1.0")
     implementation("com.google.firebase:firebase-auth-ktx")

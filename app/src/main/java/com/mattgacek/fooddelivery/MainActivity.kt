@@ -82,7 +82,9 @@ fun AppNavigation() {
             composable("login") { LoginScreen(navController) }
             composable("signUp") { SignUpScreen(navController) }
             composable("imageUpload") { ImageUploadScreen(navController) }
-            composable("home") { HomeScreen() }
+            composable("home") {
+                HomeScreen(navController) // Pass NavController here
+            }
         }
     }
 }
