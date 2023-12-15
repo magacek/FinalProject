@@ -95,15 +95,17 @@ fun AppNavigation() {
             composable("recentOrders") {
                 RecentOrdersScreen(navController)
             }
+            composable("orderDetails/{orderId}") { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")
+                OrderDetailsScreen(navController, orderId)
+            }
+
             composable("orderTracking/{restaurantAddress}/{deliveryAddress}") { backStackEntry ->
                 val restaurantAddress = backStackEntry.arguments?.getString("restaurantAddress") ?: ""
                 val deliveryAddress = backStackEntry.arguments?.getString("deliveryAddress") ?: ""
                 OrderTrackingScreen(navController, deliveryAddress, restaurantAddress)
             }
-            composable("orderDetails/{orderId}") { backStackEntry ->
-                val orderId = backStackEntry.arguments?.getString("orderId")
-                OrderDetailsScreen(navController, orderId)
-            }
+
             composable("calendar") {
                 CalendarScreen(navController)
             }
