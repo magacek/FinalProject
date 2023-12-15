@@ -100,6 +100,10 @@ fun AppNavigation() {
                 val deliveryAddress = backStackEntry.arguments?.getString("deliveryAddress") ?: ""
                 OrderTrackingScreen(navController, deliveryAddress, restaurantAddress)
             }
+            composable("orderDetails/{orderId}") { backStackEntry ->
+                val orderId = backStackEntry.arguments?.getString("orderId")
+                OrderDetailsScreen(navController, orderId)
+            }
 
 
         }

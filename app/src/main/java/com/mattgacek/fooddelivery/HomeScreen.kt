@@ -328,25 +328,33 @@ fun CheckoutMenuItemCard(menuItem: Map<String, Any>, quantity: Int) {
 }
 
 @Composable
-fun OrderDetailsScreen(navController: NavController) {
+fun OrderDetailsScreen(navController: NavController, orderId: String? = null) {
     var order by remember { mutableStateOf<Map<String, Any>?>(null) }
 
-    LaunchedEffect(Unit) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid // Fetch the current user's ID
-        FirebaseFirestore.getInstance().collection("placed")
-            .whereEqualTo("userId", userId) // Filter by user ID
-            .orderBy("orderTime", Query.Direction.DESCENDING) // Order by timestamp
-            .limit(1) // Limit to the most recent order
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val documents = querySnapshot.documents
-                if (documents.isNotEmpty()) {
-                    order = documents.first().data
+    LaunchedEffect(orderId) {
+        if (orderId != null) {
+            FirebaseFirestore.getInstance().collection("orders").document(orderId)
+                .get()
+                .addOnSuccessListener { document ->
+                    order = document.data
                 }
-            }
-            .addOnFailureListener {
-                // Handle failure
-            }
+        } else {
+            val userId = FirebaseAuth.getInstance().currentUser?.uid // Fetch the current user's ID
+            FirebaseFirestore.getInstance().collection("placed")
+                .whereEqualTo("userId", userId) // Filter by user ID
+                .orderBy("orderTime", Query.Direction.DESCENDING) // Order by timestamp
+                .limit(1) // Limit to the most recent order
+                .get()
+                .addOnSuccessListener { querySnapshot ->
+                    val documents = querySnapshot.documents
+                    if (documents.isNotEmpty()) {
+                        order = documents.first().data
+                    }
+                }
+                .addOnFailureListener {
+                    // Handle failure
+                }
+        }
     }
 
     order?.let {

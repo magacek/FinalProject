@@ -74,13 +74,17 @@ fun placeOrderAgain(order: Map<String, Any>, userId: String?, navController: Nav
     val newOrder = order.toMutableMap().apply {
         // Update the order time
         put("orderTime", System.currentTimeMillis())
+        // Add the user ID
+        if (userId != null) {
+            put("userId", userId)
+        }
     }
 
     FirebaseFirestore.getInstance().collection("orders")
         .add(newOrder)
-        .addOnSuccessListener {
-            // Navigate to OrderTrackingScreen with the correct addresses
-            navController.navigate("orderTracking/$restaurantAddress/${newOrder["deliveryAddress"]}")
+        .addOnSuccessListener { documentReference ->
+            // Navigate to OrderDetailsScreen with the new order ID
+            navController.navigate("orderDetails/${documentReference.id}")
         }
         .addOnFailureListener {
             // Handle failure (e.g., show an error message)
