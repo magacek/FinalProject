@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import coil.compose.rememberImagePainter
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.HorizontalPager
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
@@ -95,10 +98,12 @@ fun HomeScreen(navController: NavController) {
             HorizontalScrollableFavorites(favoriteRestaurants, navController)
         }
 
-        // Display all restaurants
+
         Text("All Restaurants", style = MaterialTheme.typography.h6, modifier = Modifier.padding(8.dp))
-        restaurants.forEach { restaurant ->
-            RestaurantCard(restaurant, navController)
+        LazyColumn {
+            items(restaurants) { restaurant ->
+                RestaurantCard(restaurant, navController)
+            }
         }
     }
 }
@@ -159,6 +164,7 @@ fun RestaurantCard(restaurant: Restaurant, navController: NavController) {
     }
 }
 
+@OptIn(ExperimentalPagerApi::class)
 @Composable
 fun RestaurantDetailScreen(restaurantName: String?, navController: NavController) {
     var restaurant by remember { mutableStateOf<Restaurant?>(null) }
@@ -184,11 +190,13 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
         restaurant?.let { res ->
             if (!isInCheckoutMode) {
                 res.imageUrls.firstOrNull()?.let { imageUrl ->
-                    Image(
-                        painter = rememberImagePainter(imageUrl),
-                        contentDescription = "Restaurant Image",
-                        modifier = Modifier.fillMaxWidth().height(200.dp)
-                    )
+                    HorizontalPager(count = res.imageUrls.size, modifier = Modifier.fillMaxWidth().height(200.dp)) { page ->
+                        Image(
+                            painter = rememberImagePainter(res.imageUrls[page]),
+                            contentDescription = "Restaurant Image",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(res.name, style = MaterialTheme.typography.h6, modifier = Modifier.padding(8.dp))
@@ -206,7 +214,11 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
                 Text(res.name, style = MaterialTheme.typography.h4, modifier = Modifier.padding(8.dp))
                 res.menu.forEach { menuItem ->
                     val itemName = menuItem["name"] as String
-                    CheckoutMenuItemCard(menuItem, menuItemQuantities[itemName] ?: 1)
+                    if (menuItemQuantities[itemName] ?: 0 > 0) {
+                        CheckoutMenuItemCard(menuItem, menuItemQuantities[itemName] ?: 1) {
+                            menuItemQuantities.remove(itemName)
+                        }
+                    }
                 }
 
                 TextField(
@@ -231,7 +243,6 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
                             hashMapOf(
                                 "name" to menuItem["name"] as String,
                                 "price" to menuItem["price"] as String,
-
                                 "quantity" to (menuItemQuantities[menuItem["name"] as String] ?: 0)
                             )
                         },
@@ -242,8 +253,9 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
 
                     FirebaseFirestore.getInstance().collection("orders")
                         .add(orderDetails)
-                        .addOnSuccessListener {
-                            navController.navigate("orderTracking/${restaurant?.address}/$deliveryAddress")
+                        .addOnSuccessListener { documentReference ->
+                            // Navigate to OrderDetailsScreen with the new order ID
+                            navController.navigate("orderDetails/${documentReference.id}")
                         }
                         .addOnFailureListener {
                             // Handle failure
@@ -375,23 +387,47 @@ fun MenuItemCard(menuItem: Map<String, Any>, quantity: Int, onQuantityChange: (I
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun CheckoutMenuItemCard(menuItem: Map<String, Any>, quantity: Int) {
-    Card(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(menuItem["name"] as String, style = MaterialTheme.typography.body1)
-                Text("${menuItem["price"]}", style = MaterialTheme.typography.body1)
-            }
-            Text("$quantity", style = MaterialTheme.typography.body1)
+fun CheckoutMenuItemCard(menuItem: Map<String, Any>, quantity: Int, onDelete: () -> Unit) {
+    val dismissState = rememberDismissState(
+        confirmStateChange = {
+            if (it == DismissValue.DismissedToEnd) onDelete()
+            it != DismissValue.DismissedToEnd
         }
-    }
+    )
+
+    SwipeToDismiss(
+        state = dismissState,
+        background = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(8.dp)
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.align(Alignment.CenterEnd))
+            }
+        },
+        dismissContent = {
+            Card(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(menuItem["name"] as String, style = MaterialTheme.typography.body1)
+                        Text("${menuItem["price"]}", style = MaterialTheme.typography.body1)
+                    }
+                    Text("$quantity", style = MaterialTheme.typography.body1)
+                }
+            }
+        }
+    )
 }
+
+// Inside RestaurantDetailScreen, adjust the logic for displaying CheckoutMenuItemCard
 
 @Composable
 fun OrderDetailsScreen(navController: NavController, orderId: String? = null) {
@@ -440,12 +476,14 @@ fun OrderDetailsScreen(navController: NavController, orderId: String? = null) {
             Text("Date/Time: ${formatTimestamp(it["orderTime"] as Long)}")
         }
         Button(onClick = {
+            // Navigate to OrderTrackingScreen with order details
             navController.navigate("orderTracking/${order!!["restaurantAddress"]}/${order!!["deliveryAddress"]}")
         }) {
             Text("Track Order")
         }
-    } ?: Text("Loading order details...", modifier = Modifier.fillMaxWidth().padding(16.dp))
+    }
 }
+
 
 @Composable
 fun OrderItemCard(item: Map<String, Any>) {
