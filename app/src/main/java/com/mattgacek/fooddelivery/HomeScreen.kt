@@ -10,6 +10,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import com.google.android.gms.maps.model.LatLngBounds
 
@@ -60,27 +62,80 @@ data class Restaurant(
 @Composable
 fun HomeScreen(navController: NavController) {
     var restaurants by remember { mutableStateOf<List<Restaurant>>(listOf()) }
+    var favoriteRestaurants by remember { mutableStateOf<List<String>>(listOf()) }
 
+    // Fetch all restaurants
     LaunchedEffect(Unit) {
         FirebaseFirestore.getInstance().collection("restaurants")
             .get()
             .addOnSuccessListener { snapshot ->
                 restaurants = snapshot.toObjects()
-                Log.d("HomeScreen", "Fetched restaurants: $restaurants")
             }
             .addOnFailureListener { e ->
                 Log.e("HomeScreen", "Error fetching restaurants", e)
             }
     }
 
+    // Fetch user's favorite restaurants from their order history
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
+    LaunchedEffect(userId) {
+        FirebaseFirestore.getInstance().collection("orders")
+            .whereEqualTo("userId", userId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val orderedRestaurants = snapshot.documents.mapNotNull { it["restaurantName"] as? String }
+                favoriteRestaurants = orderedRestaurants.toSet().toList() // Convert to set to remove duplicates, then back to list
+            }
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Display favorite restaurants if available
+        if (favoriteRestaurants.isNotEmpty()) {
+            Text("Favorites", style = MaterialTheme.typography.h6, modifier = Modifier.padding(8.dp))
+            HorizontalScrollableFavorites(favoriteRestaurants, navController)
+        }
+
+        // Display all restaurants
+        Text("All Restaurants", style = MaterialTheme.typography.h6, modifier = Modifier.padding(8.dp))
         restaurants.forEach { restaurant ->
             RestaurantCard(restaurant, navController)
         }
     }
 }
 
+@Composable
+fun HorizontalScrollableFavorites(favoriteRestaurants: List<String>, navController: NavController) {
+    LazyRow(modifier = Modifier.padding(horizontal = 8.dp)) {
+        items(favoriteRestaurants) { restaurantName ->
+            FavoriteRestaurantCard(restaurantName, navController)
+        }
+    }
+}
+
+@Composable
+fun FavoriteRestaurantCard(restaurantName: String, navController: NavController) {
+    Card(
+        modifier = Modifier
+            .padding(4.dp)
+            .width(150.dp) // Set a fixed width for the card
+            .height(100.dp) // Set a fixed height for the card
+            .clickable { navController.navigate("restaurantDetail/$restaurantName") },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = restaurantName,
+                style = MaterialTheme.typography.body1,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
 @Composable
 fun RestaurantCard(restaurant: Restaurant, navController: NavController) {
     Card(
@@ -119,7 +174,7 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
             .addOnSuccessListener { snapshot ->
                 restaurant = snapshot.toObjects<Restaurant>().firstOrNull()
                 restaurant?.menu?.forEach { menuItem ->
-                    menuItemQuantities[menuItem["name"] as String] = 1
+                    menuItemQuantities[menuItem["name"] as String] = 0
                 }
             }
     }
