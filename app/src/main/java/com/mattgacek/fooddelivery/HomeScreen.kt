@@ -6,6 +6,7 @@ import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -172,6 +173,7 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
     var deliveryAddress by remember { mutableStateOf("") }
     var specialInstructions by remember { mutableStateOf("") }
     val menuItemQuantities = remember { mutableStateMapOf<String, Int>() }
+    val context = LocalContext.current
 
     LaunchedEffect(restaurantName) {
         FirebaseFirestore.getInstance().collection("restaurants")
@@ -236,6 +238,10 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
 
 // Inside RestaurantDetailScreen, within the "Place Order" button onClick
                 Button(onClick = {
+                    if (deliveryAddress.isBlank()) {
+                        // If the delivery address is empty, show a toast
+                        Toast.makeText(context, "Please enter a delivery address.", Toast.LENGTH_SHORT).show()
+                    } else {
                     val orderDetails = hashMapOf(
                         "restaurantAddress" to restaurant?.address,
                         "restaurantName" to restaurantName,
@@ -260,6 +266,7 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
                         .addOnFailureListener {
                             // Handle failure
                         }
+                }
                 }, modifier = Modifier.padding(16.dp)) {
                     Text("Place Order")
                 }
