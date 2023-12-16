@@ -10,6 +10,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 
+/**
+ * RecentOrdersScreen.kt
+ * This file contains the RecentOrdersScreen Composable function, showcasing a list of recent orders
+ * made by the user, fetched from Firebase Firestore.
+ */
+
 @Composable
 fun RecentOrdersScreen(navController: NavController) {
     val userId = FirebaseAuth.getInstance().currentUser?.uid

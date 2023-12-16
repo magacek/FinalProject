@@ -62,7 +62,12 @@ data class Restaurant(
 )
 
 
-
+/**
+ * HomeScreen.kt
+ * This file contains the HomeScreen Composable function which is the main view for displaying
+ * a list of restaurants and the user's favorite restaurants. It fetches restaurant data
+ * and user preferences from Firebase Firestore.
+ */
 @Composable
 fun HomeScreen(navController: NavController) {
     var restaurants by remember { mutableStateOf<List<Restaurant>>(listOf()) }
@@ -142,6 +147,13 @@ fun FavoriteRestaurantCard(restaurantName: String, navController: NavController)
         }
     }
 }
+/**
+ * RestaurantCardComponents.kt
+ * This file includes composable functions such as RestaurantCard, FavoriteRestaurantCard,
+ * and HorizontalScrollableFavorites, which are used in the HomeScreen to display restaurant
+ * information and favorites in a user-friendly layout.
+ */
+
 @Composable
 fun RestaurantCard(restaurant: Restaurant, navController: NavController) {
     Card(
@@ -164,6 +176,12 @@ fun RestaurantCard(restaurant: Restaurant, navController: NavController) {
         }
     }
 }
+/**
+ * RestaurantCardComponents.kt
+ * This file includes composable functions such as RestaurantCard, FavoriteRestaurantCard,
+ * and HorizontalScrollableFavorites, which are used in the HomeScreen to display restaurant
+ * information and favorites in a user-friendly layout.
+ */
 
 @OptIn(ExperimentalPagerApi::class)
 @Composable
@@ -279,6 +297,11 @@ fun RestaurantDetailScreen(restaurantName: String?, navController: NavController
         }
     } ?: Text("Loading or no data available", modifier = Modifier.fillMaxWidth().padding(16.dp))
 }
+/**
+ * OrderTrackingScreen.kt
+ * This file provides the OrderTrackingScreen Composable function, which includes a map view for
+ * tracking the delivery of an order from the restaurant to the delivery address.
+ */
 
 
 @Composable

@@ -10,6 +10,11 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.database.FirebaseDatabase
+/**
+ * SignUpScreen.kt
+ * Manages the user registration process, including collecting user details and registering the user
+ * with Firebase Authentication and Firebase Realtime Database.
+ */
 
 @Composable
 fun SignUpScreen(navController: NavController) {

@@ -21,6 +21,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
 
+/**
+ * MainActivity.kt
+ * The main activity of the application, which sets up the navigation graph and manages the overall
+ * app navigation using Jetpack Compose.
+ */
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,6 +122,11 @@ fun AppNavigation() {
     }
 }
 
+/**
+ * DrawerContent.kt
+ * Provides the DrawerContent Composable function, which is used in the main activity to display
+ * the navigation drawer content, including user profile information and navigation options.
+ */
 
 
 @Composable

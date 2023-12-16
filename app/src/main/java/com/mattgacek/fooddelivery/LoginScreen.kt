@@ -9,6 +9,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 
+/**
+ * LoginScreen.kt
+ * Contains the LoginScreen Composable function, responsible for handling user authentication and login
+ * process using Firebase Authentication.
+ */
+
 @Composable
 fun LoginScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }

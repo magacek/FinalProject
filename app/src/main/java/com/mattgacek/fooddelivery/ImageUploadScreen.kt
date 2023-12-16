@@ -22,6 +22,12 @@ import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.storage.FirebaseStorage
 import java.util.*
 
+/**
+ * ImageUploadScreen.kt
+ * Manages the image uploading process for user profiles. It includes functionality for selecting
+ * and uploading images to Firebase Storage.
+ */
+
 @Composable
 fun ImageUploadScreen(navController: NavController) {
     val context = LocalContext.current
