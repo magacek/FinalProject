@@ -459,26 +459,38 @@ fun OrderDetailsScreen(navController: NavController, orderId: String? = null) {
         }
     }
 
-    order?.let {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text("Order Details", style = MaterialTheme.typography.h4)
-            Spacer(modifier = Modifier.height(16.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        order?.let {
+            Column(modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .align(Alignment.TopCenter)) {
+                Text("Order Details", style = MaterialTheme.typography.h4)
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Display order details
-            (it["items"] as? List<Map<String, Any>>)?.forEach { item ->
-                OrderItemCard(item)
+                // Display order details
+                (it["items"] as? List<Map<String, Any>>)?.forEach { item ->
+                    OrderItemCard(item)
+                }
+
+                // Additional details like address, order time, etc.
+                Text("From: ${it["restaurantName"]}")
+                Text("Address: ${it["deliveryAddress"]}")
+                // Convert the timestamp to readable date/time
+                Text("Date/Time: ${formatTimestamp(it["orderTime"] as Long)}")
             }
-
-            // Additional details like address, order time, etc.
-            Text("From: ${it["restaurantName"]}")
-            Text("Address: ${it["deliveryAddress"]}")
-            // Convert the timestamp to readable date/time
-            Text("Date/Time: ${formatTimestamp(it["orderTime"] as Long)}")
         }
-        Button(onClick = {
-            // Navigate to OrderTrackingScreen with order details
-            navController.navigate("orderTracking/${order!!["restaurantAddress"]}/${order!!["deliveryAddress"]}")
-        }) {
+
+        // Button styled to be at the bottom center
+        Button(
+            onClick = {
+                // Navigate to OrderTrackingScreen with order details
+                navController.navigate("orderTracking/${order!!["restaurantAddress"]}/${order!!["deliveryAddress"]}")
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+        ) {
             Text("Track Order")
         }
     }
